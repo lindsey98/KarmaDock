@@ -123,7 +123,7 @@ def make_inference(test_dataset, model, device, proteinname, pocketname, postpro
 
     return protein_name, compound_name, binding_scores, pocket_names
 
-
+@torch.no_grad()
 def post_processing(lig_node_s, pro_node_s, lig_pos, data, mdn_score_pred, use_ff=True):
     # # post processing
     data.pos_preds = lig_pos
