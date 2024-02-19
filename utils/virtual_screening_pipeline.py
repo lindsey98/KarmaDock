@@ -74,12 +74,16 @@ protein_file = args.protein_file
 pocket_file = args.protein_file.replace('.pdb', '_pocket.pdb')
 ligand_file = args.crystal_ligand_file
 score_threshold = args.score_threshold
+
 # get pocket center
 cry_lig_pos = get_mol2_xyz_from_cmd(args.crystal_ligand_file)
 pocket_center = torch.from_numpy(cry_lig_pos).to(torch.float32).mean(dim=0)
-# get pocket 
+
+# get pocket
 if not os.path.exists(pocket_file):
     get_pocket_pure(protein_file, cry_lig_pos, pocket_file, size=12)
+
+
 # test 
 test_dataset = VSTestGraphDataset_FlyReload_SMI(protein_file=pocket_file, ligand_path=vs_libray_path, pocket_center=pocket_center)
 if args.mode != 'vs':

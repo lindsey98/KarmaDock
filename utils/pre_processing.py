@@ -9,10 +9,11 @@ from multiprocessing import Pool
 import numpy as np
 from prody import parsePDB, writePDB
 from rdkit import Chem
+from io import StringIO
+
 pwd_dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(pwd_dir)
 sys.path.append(os.path.dirname(pwd_dir))
-
 
 
 
@@ -40,7 +41,8 @@ def get_pocket_pure(protein_file, somepoint, out_file, size=12):
     condition = f'same residue as exwithin {size} of somepoint'
     pocket_selected = protein_prody_obj.select(condition,
                                                somepoint=somepoint)  # （n, 3）
-    writePDB(out_file, atoms=pocket_selected)
+    if pocket_selected:
+        writePDB(out_file, atoms=pocket_selected)
 
 
 def get_mol2_xyz_from_cmd(ligand_mol2):
@@ -92,6 +94,50 @@ def pipeline(pdb_id):
         get_pocket(pdb_id)
     except:
         print(f'{pdb_id} error')
+
+
+def read_mol(sdf_filename, mol2_filename, verbose=False):
+    '''
+        Read mol from sdf/mol file
+    '''
+    def read_and_process(file_name, file_format):
+        """Attempt to read and sanitize a molecule from a given file."""
+        if file_format == 'sdf':
+            mol = Chem.MolFromMolFile(file_name, sanitize=False)
+        elif file_format == 'mol2':
+            mol = Chem.MolFromMol2File(file_name, sanitize=False)
+        else:
+            return None, "Unsupported file format"
+
+        if mol is None:
+            return None, "Failed to load molecule"
+
+        try:
+            Chem.SanitizeMol(mol)
+            mol = Chem.RemoveHs(mol)
+            return mol, None  # No error
+        except Exception as e:
+            return None, str(e)
+
+    # Capture RDKit warnings and errors
+    original_stderr = sys.stderr
+    sys.stderr = StringIO()
+
+    mol, error = read_and_process(sdf_filename, 'sdf')
+    if error:
+        if verbose:
+            print(f"SDF Error: {error}")
+        mol, error = read_and_process(mol2_filename, 'mol2')
+        if error and verbose:
+            print(f"Mol2 Error: {error}")
+
+    # Restore the original stderr
+    sys.stderr = original_stderr
+
+    if verbose and not error:
+        print("Molecule loaded successfully")
+
+    return mol, bool((error is not None))
 
 
 if __name__ == '__main__':

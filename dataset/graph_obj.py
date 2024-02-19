@@ -277,14 +277,14 @@ class MultiComplexGraphDataset_Fly(Dataset):
         data = merge_pro_lig_graph(pro_data=protein_data, data=ligand_data)
         data = get_protein_ligand_graph(data, pro_node_num=data['protein'].xyz.size(0), lig_node_num=data['ligand'].xyz.size(0))
         data.pdb_id = f'{protein_name}_{ligand_name}'
-        data.pocket_center = protein_data.pocket_center
+        data.protein_center = protein_data.pocket_center
         return data
 
 
     def __getitem__(self, idx):
         try:
             data = self.process_fn(idx)
-            data['ligand'].pos = random_rotation(shuffle_center(move2center(data['ligand'].pos, pocket_center=data.pocket_center)))  
+            data['ligand'].pos = random_rotation(shuffle_center(move2center(data['ligand'].pos, pocket_center=data.protein_center)))
         except:
             # pass
             print(f'{"_".join(self.protein_ligand_names[idx])} error')
@@ -336,30 +336,73 @@ class VSTestGraphDataset_Fly(Dataset):
     
 class VSTestGraphDataset_Fly_SMI(VSTestGraphDataset_Fly):
     '''initializing the ligand pose with rdkit with mols from SMILES'''
-    def __init__(self, protein_file, ligand_path, pocket_center):
+    def __init__(self, protein_file, ligand_path, pocket_center, protein_name):
         super().__init__(protein_file, ligand_path, pocket_center)
         self.ligand_smis = []
-        with open(ligand_path, 'r') as f:
-            con = f.read().splitlines()
-        self.ligand_names = [i.split()[1] for i in con] #  if i.split()[1]=='BDB14479']
-        self.ligand_smis = [i.split()[0] for i in con] #  if i.split()[1]=='BDB14479']
+        self.graph_dir = os.path.join(os.path.dirname(ligand_path), protein_name)
+        os.makedirs(self.graph_dir, exist_ok=True)
 
     def _get_mol(self, idx):
         smi = self.ligand_smis[idx]
         mol = smi2conformer(smi)
-        # mol = smi2conformer_fast(smi)
         return mol
-    
+
+    def generate_graphs(self, ligand_smi, n_job=-1, verbose=True):
+        with open(ligand_smi, 'r') as f:
+            con = f.read().splitlines()
+        self.ligand_names = [i.split()[0] for i in con]
+        self.ligand_smis = [i.split()[1] for i in con]
+        if n_job == 1:
+            if verbose:
+                iters = tqdm(range(len(self.ligand_names)))
+            else:
+                iters = range(len(self.ligand_names))
+            for idx in iters:
+                self._single_process(idx)
+        else:
+            pool = Pool()
+            pool.map(self._single_process, range(len(self.ligand_names)))
+            pool.close()
+            pool.join()
+        print('reinitialize')
+        self.ligand_names = [ligand_file.split('.')[0] for ligand_file in os.listdir(self.graph_dir)]
+
     def _single_process(self, idx):
-        # torch.set_num_threads(1)
         ligand_name = self.ligand_names[idx]
+        dst_file = f"{self.graph_dir}/{ligand_name.replace('/', '_')}.dgl"
         # generate graph
-        cry_ligand_mol = self._get_mol(idx)
-        data = get_graph_v2(self.protein_data.clone(), cry_ligand_mol=cry_ligand_mol)
-        data.pdb_id = ligand_name
-        data['ligand'].mol = cry_ligand_mol
-        data['ligand'].pos = (data['ligand'].xyz + data.pocket_center - data['ligand'].xyz.mean(dim=0)).to(torch.float32)
+        try:
+            ligand_mol = self._get_mol(idx)
+            data = HeteroData()
+            ligand_data = generate_lig_graph(data, ligand_mol)
+            ligand_data.pdb_id = ligand_name
+            ligand_data['ligand'].mol = ligand_mol
+            ligand_data['ligand'].pos = (ligand_data['ligand'].xyz + self.pocket_center - ligand_data['ligand'].xyz.mean(dim=0)).to(torch.float32)
+            save_graph(dst_file, ligand_data)
+        except Exception as e:
+            print(f'{ligand_name} error due to {e}')
+
+    def merge_complex_graph(self, idx):
+        ligand_name = self.ligand_names[idx]
+        dst_file = f'{self.graph_dir}/{ligand_name}.dgl'
+        ligand_data = load_graph(dst_file)
+        data = merge_pro_lig_graph(pro_data=self.protein_data.clone(),
+                                   data=ligand_data)
+        data = get_protein_ligand_graph(data,
+                                        pro_node_num=data['protein'].xyz.size(0),
+                                        lig_node_num=data['ligand'].xyz.size(0))
         return data
+
+    def __getitem__(self, idx):
+        try:
+            data = self.merge_complex_graph(idx)
+            data['ligand'].pos -= data['ligand'].pos.mean(dim=0) - self.pocket_center
+            data['ligand'].pos = random_rotation(shuffle_center(data['ligand'].pos))
+        except:
+            return None
+        return data
+    def __len__(self):
+        return len(self.ligand_names)
     
 class VSTestGraphDataset_FlyReload_SMI(VSTestGraphDataset_Fly):
     '''initializing the ligand pose with rdkit with mols from SMILES'''
@@ -480,7 +523,7 @@ class VSTestGraphDataset_Fly_SDFMOL2(VSTestGraphDataset_Fly_SDFMOL2_Refined):
         ###
         data = get_graph_v2(self.protein_data.clone(), cry_ligand_mol=cry_ligand_mol)
         data.pdb_id = ligand_name
-        data['ligand'].pos = data['ligand'].xyz + data.pocket_center - data['ligand'].xyz.mean(dim=0)
+        data['ligand'].pos = data['ligand'].xyz + data.protein_center - data['ligand'].xyz.mean(dim=0)
         data['ligand'].xyz = torch.from_numpy(l_xyz).to(torch.float32)
         return data
     
@@ -591,7 +634,8 @@ def ff_refined_mol_pos(mol, n_max=1):
     feed_back = [[-1, 1]]
     n = 0
     while feed_back[0][0] == -1 and n < n_max:
-        feed_back = AllChem.MMFFOptimizeMoleculeConfs(mol, mmffVariant='MMFF94s')
+        # feed_back = AllChem.MMFFOptimizeMoleculeConfs(mol, mmffVariant='MMFF94s')
+        feed_back = AllChem.MMFFOptimizeMolecule(mol, maxIters=500, confId=0)
         n += 1
     return mol
 
@@ -617,19 +661,42 @@ def mol2conformer_v2(mol):
     return m_mol
 
 
+# def smi2conformer(smi):
+#     mol = Chem.MolFromSmiles(Chem.MolToSmiles(Chem.AddHs(Chem.MolFromSmiles(smi))))
+#     mol = Chem.AddHs(mol)
+#     smi = Chem.MolToSmiles(mol)
+#     mol = Chem.MolFromSmiles(smi)
+#     # mol = Chem.AddHs(mol)
+#     # m_mol = add_conformer(mol)
+#     # if m_mol != -1:
+#     #     mol = m_mol
+#     # mol = ff_refined_mol_pos(mol, n_max=100)
+#     ps = AllChem.ETKDGv2()
+#     try:
+#         rid = AllChem.EmbedMolecule(mol, ps)
+#         AllChem.MMFFOptimizeMolecule(mol, maxIters=500, confId=0)
+#     except:
+#         mol.Compute2DCoords()
+#     mol = Chem.RemoveAllHs(mol)
+#     return mol
+
 def smi2conformer(smi):
-    mol = Chem.MolFromSmiles(Chem.MolToSmiles(Chem.AddHs(Chem.MolFromSmiles(smi))))
-    mol = Chem.AddHs(mol)
-    smi = Chem.MolToSmiles(mol)
+    # Convert SMILES to a molecule object and add hydrogens
     mol = Chem.MolFromSmiles(smi)
     mol = Chem.AddHs(mol)
-    m_mol = add_conformer(mol)
-    if m_mol != -1:
-        mol = m_mol
-    mol = ff_refined_mol_pos(mol, n_max=100)
+
+    # Generate 3D coordinates
+    ps = AllChem.ETKDGv2()
+    try:
+        AllChem.EmbedMolecule(mol, ps)
+        AllChem.MMFFOptimizeMolecule(mol, maxIters=500)
+    except:
+        # Fallback to 2D coordinates if 3D embedding fails
+        mol.Compute2DCoords()
+
+    # Remove hydrogens before returning the molecule
     mol = Chem.RemoveAllHs(mol)
     return mol
-
 
 def smi2conformer_fast(smi):
     mol = Chem.MolFromSmiles(smi)
