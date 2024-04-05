@@ -21,11 +21,6 @@ Zhang, Xujun#; Zhang, Odin#; Shen, Chao; Qu, Wanglin; Chen, Shicheng; Cao, Hanqu
 *Published in:* Nature Computational Science, 2023, Vol. 3, No. 9, pp. 789-804.
 *DOI:* [10.1038/s43588-023-00511-5](https://www.nature.com/articles/s43588-023-00511-5)
 
-## Software Requirements
-
-### OS Requirements
-
-The package development version is tested on *Linux: Ubuntu 18.04* operating systems.
 
 ### Python Dependencies
 
@@ -148,68 +143,41 @@ cd /root/KarmaDock
 wget https://zenodo.org/record/8131256/files/DEKOIS2.zip?download=1
 unzip -q DEKOIS2.zip?download=1
 ```
+Set sudo permission:
+```
+sudo chmod 755 --recursive "/root/KarmaDock/DEKOIS2"
+```
+
 ### 2. virtual screening
 
 This step will perform virtual screening for a specific target PDK1 (predict binding poses and binding strengthes).
 
-###### (1) CPU and GPU machines (faster):
-You can run the following command on CPUs before performing virtual screening (generate graphs in advance)
-```
-cd /root/KarmaDock/utils
-python -u virtual_screening_pipeline.py 
---mode generate_graph
---ligand_smi ~/the/directory/for/ligand/library/smi 
---protein_file ~/the/directory/for/target/protein/pdb 
---crystal_ligand_file ~/the/directory/for/crystal/ligand/mol2/for/binding/pocket 
---graph_dir ~/the/directory/for/saving/ligand/graphs 
---random_seed 2023 
-```
-e.g.,
-
+First run on CPU to generate graph
 ```
 cd /root/KarmaDock/utils 
-python -u virtual_screening_pipeline.py --ligand_smi /root/KarmaDock/DEKOIS2/pdk1/active_decoys.smi --protein_file /root/KarmaDock/DEKOIS2/pdk1/protein/pdk1_protein.pdb --crystal_ligand_file /root/KarmaDock/DEKOIS2/pdk1/protein/pdk1_ligand.mol2 --graph_dir /root/KarmaDock/DEKOIS2/pdk1/karmadock_liggraph --random_seed 2023 
+python -u virtual_screening_pipeline.py \
+--ligand_smi /home/ruofan/git_space/KarmaDock/DEKOIS2/pdk1/active_decoys.smi \
+--protein_file /home/ruofan/git_space/KarmaDock/DEKOIS2/pdk1/protein/pdk1_protein.pdb \
+--crystal_ligand_file /home/ruofan/git_space/KarmaDock/DEKOIS2/pdk1/protein/pdk1_ligand.mol2 \
+--graph_dir /home/ruofan/git_space/KarmaDock/DEKOIS2/pdk1/karmadock_liggraph \
+--out_dir /home/ruofan/git_space/KarmaDock/DEKOIS2/pdk1/karmadocked \
+--random_seed 2023 \
+--mode generate_graph
+
 ```
+
 Then, you can run the following command on GPUs to perform virtual screening (predict binding poses and binding strengthes)
 ```
-cd /root/KarmaDock/utils
-python -u virtual_screening_pipeline.py 
---mode vs
---protein_file ~/the/directory/for/target/protein/pdb 
---crystal_ligand_file ~/the/directory/for/crystal/ligand/mol2/for/binding/pocket 
---graph_dir ~/the/directory/for/saving/ligand/graphs 
---out_dir ~/path/for/recording/BindingPoses&DockingScores 
---score_threshold 50 
---batch_size 64 
---random_seed 2023 
---out_uncoorected 
---out_corrected
-```
-e.g.,
-
-```
 cd /root/KarmaDock/utils 
-python -u virtual_screening_pipeline.py --protein_file /root/KarmaDock/DEKOIS2/pdk1/protein/pdk1_protein.pdb --crystal_ligand_file /root/KarmaDock/DEKOIS2/pdk1/protein/pdk1_ligand.mol2 --graph_dir /root/KarmaDock/DEKOIS2/pdk1/karmadock_liggraph --out_dir /root/KarmaDock/DEKOIS2/pdk1/karmadocked --score_threshold 50 --batch_size 64 --random_seed 2023 --out_uncoorected --out_corrected
-```
-###### (2) GPU machines (slower but more convinent):
-For pure GPU machines, you can run the following command to perform virtual screening (generate graphs on the fly)
-```
-cd /root/KarmaDock/utils 
-python -u virtual_screening.py 
---ligand_smi ~/the/directory/for/ligand/library/smi 
---protein_file ~/the/directory/for/target/protein/pdb 
---crystal_ligand_file ~/the/directory/for/crystal/ligand/mol2/for/binding/pocket 
---out_dir ~/path/for/recording/BindingPoses&DockingScores 
---score_threshold 50
---batch_size 64 
---random_seed 2023 
---out_uncoorected
+python -u virtual_screening_pipeline.py \
+--protein_file /home/ruofan/git_space/KarmaDock/DEKOIS2/pdk1/protein/pdk1_protein.pdb \
+--crystal_ligand_file /home/ruofan/git_space/KarmaDock/DEKOIS2/pdk1/protein/pdk1_ligand.mol2 \
+--graph_dir /home/ruofan/git_space/KarmaDock/DEKOIS2/pdk1/karmadock_liggraph \
+--out_dir /home/ruofan/git_space/KarmaDock/DEKOIS2/pdk1/karmadocked \
+--score_threshold 50 \
+--batch_size 64 \
+--random_seed 2023 \
+--out_uncoorected \
 --out_corrected
 ```
 
-e.g.,
-
-```
-cd /root/KarmaDock/utils 
-python -u virtual_screening.py --ligand_smi /root/KarmaDock/DEKOIS2/pdk1/active_decoys.smi --protein_file /root/KarmaDock/DEKOIS2/pdk1/protein/pdk1_protein.pdb --crystal_ligand_file /root/KarmaDock/DEKOIS2/pdk1/protein/pdk1_ligand.mol2 --out_dir /root/KarmaDock/DEKOIS2/pdk1/karmadocked --score_threshold 50 --batch_size 64 --random_seed 2023 --out_uncoorected --out_corrected
-```

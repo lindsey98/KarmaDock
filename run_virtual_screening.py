@@ -178,8 +178,9 @@ if __name__ == '__main__':
     argparser.add_argument('--out_corrected', action='store_true', default=False, help='whether to save corrected poses to sdf file')
     argparser.add_argument('--proteinDirsUni', default="/home/ruofan/git_space/TankBind/datasets/protein_315", help='Directory for protein files (unfied)')
 
+    argparser.add_argument('--protein_feature', default="/home/ruofan/git_space/TankBind/datasets/protein_315.pt", help="Protein features from TankBind")
     argparser.add_argument('--protein_pockets_p2rank', default="/home/ruofan/git_space/TankBind/datasets/protein_315_p2rank",
-                        help='Where to save the Protein pockets p2rank predictions')
+                        help='Protein pockets p2rank predictions')
     argparser.add_argument('--ligandDirs', default="/home/ruofan/git_space/TankBind/datasets/drugbank", help='Directory for ligand files')
 
     argparser.add_argument('--protein_pockets_dir', type=str,
@@ -201,7 +202,7 @@ if __name__ == '__main__':
     os.makedirs(args.out_dir, exist_ok=True)
     os.makedirs(args.protein_pockets_dir, exist_ok=True)
 
-    protein_dict = torch.load('/home/ruofan/git_space/TankBind/datasets/protein_315.pt') # this is processed by TankBind
+    protein_dict = torch.load(args.protein_feature) # this is processed by TankBind
 
     '''Aggregate all predicted pocket centers (as well as the protein center) as potential binding sites, and expand a radius of 20A as the potential binding pockets'''
     for proteinName in list(protein_dict.keys()):
