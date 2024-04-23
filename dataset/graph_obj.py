@@ -680,7 +680,7 @@ def mol2conformer_v2(mol):
 #     mol = Chem.RemoveAllHs(mol)
 #     return mol
 
-def smi2conformer(smi):
+def smi2conformer(smi, seed=2020):
     # Convert SMILES to a molecule object and add hydrogens
     mol = Chem.MolFromSmiles(smi)
     mol = Chem.AddHs(mol)
@@ -688,7 +688,7 @@ def smi2conformer(smi):
     # Generate 3D coordinates
     ps = AllChem.ETKDGv2()
     try:
-        AllChem.EmbedMolecule(mol, ps)
+        AllChem.EmbedMolecule(mol, ps, randomSeed=seed)  # Set the random seed for reproducibility
         AllChem.MMFFOptimizeMolecule(mol, maxIters=500)
     except:
         # Fallback to 2D coordinates if 3D embedding fails
