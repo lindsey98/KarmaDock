@@ -137,18 +137,31 @@ def position_align_mol(rdkit_mol, refer_mol):
     return rmsd
 
 def position_align_np(rdkit_mol, refer_mol, algo='kabsch'):
-    A = rdkit_mol.GetConformer().GetPositions()
-    B = refer_mol.GetConformer().GetPositions()
+    A = np.array(rdkit_mol.GetConformer().GetPositions(), dtype=np.float64)
+    B = np.array(refer_mol.GetConformer().GetPositions(), dtype=np.float64)
+
     B_center = rmsd.centroid(B)
     A -= rmsd.centroid(A)
     B -= B_center
-    # rmsd.quaternion_rotate
+
+    # Aligning using Kabsch or Quaternion
     if algo == 'kabsch':
-        U = rmsd.kabsch(A, B)
-    else: # quaternion
+        try:
+            U = rmsd.kabsch(A, B)
+        except np.linalg.LinAlgError:
+            print("SVD did not converge, adding regularization")
+            C = np.dot(A.T, B)
+            C += np.eye(C.shape[0]) * 1e-4  # Adding a small identity matrix
+            V, S, W = np.linalg.svd(C)
+            U = np.dot(W, V.T)
+    else:  # quaternion
         U = rmsd.quaternion_rotate(A, B)
+
+    # Applying the rotation matrix U
     A = np.dot(A, U)
     A += B_center
+
+    # Set positions back to the RDKit molecule
     set_rdkit_mol_position(rdkit_mol=rdkit_mol, position=A)
 
 
