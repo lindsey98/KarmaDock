@@ -22,7 +22,7 @@ class Gate_Block(nn.Module):
         super().__init__()
         self.gate_layer = nn.Sequential(
             nn.Linear(3*dim_tmp, dim_tmp),
-            nn.Dropout(p=drop_rate))
+            nn.Dropout(p=drop_rate)) # possible randomness
         self.norm = GraphNorm(dim_tmp)
     
     def forward(self, f1, f2):

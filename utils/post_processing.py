@@ -146,14 +146,7 @@ def position_align_np(rdkit_mol, refer_mol, algo='kabsch'):
 
     # Aligning using Kabsch or Quaternion
     if algo == 'kabsch':
-        try:
-            U = rmsd.kabsch(A, B)
-        except np.linalg.LinAlgError:
-            print("SVD did not converge, adding regularization")
-            C = np.dot(A.T, B)
-            C += np.eye(C.shape[0]) * 1e-4  # Adding a small identity matrix
-            V, S, W = np.linalg.svd(C)
-            U = np.dot(W, V.T)
+        U = rmsd.kabsch(A, B)
     else:  # quaternion
         U = rmsd.quaternion_rotate(A, B)
 
