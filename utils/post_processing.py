@@ -142,7 +142,7 @@ def position_align_np(rdkit_mol, refer_mol, algo='kabsch'):
     B_center = rmsd.centroid(B)
     A -= rmsd.centroid(A)
     B -= B_center
-    rmsd.quaternion_rotate
+    # rmsd.quaternion_rotate
     if algo == 'kabsch':
         U = rmsd.kabsch(A, B)
     else: # quaternion
@@ -152,7 +152,12 @@ def position_align_np(rdkit_mol, refer_mol, algo='kabsch'):
     set_rdkit_mol_position(rdkit_mol=rdkit_mol, position=A)
 
 
-def correct_pos(data, out_dir, mask=[], out_init=False, out_movie=False, out_uncoorected=True, out_corrected=True, addHs=True):
+def correct_pos(data, out_dir, mask=[],
+                out_init=False,
+                out_movie=False,
+                out_uncoorected=True,
+                out_corrected=True,
+                addHs=True):
     poses = []
     # pocket_centers = data.pocket_center.cpu().numpy().astype(np.float64)
     for idx, mol in enumerate(data['ligand'].mol):

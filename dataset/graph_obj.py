@@ -365,7 +365,7 @@ class VSTestGraphDataset_Fly_SMI(VSTestGraphDataset_Fly):
             pool.close()
             pool.join()
         print('reinitialize')
-        self.ligand_names = [ligand_file.split('.')[0] for ligand_file in os.listdir(self.graph_dir)]
+        # self.ligand_names = [ligand_file.split('.')[0] for ligand_file in os.listdir(self.graph_dir)]
 
     def _single_process(self, idx):
         ligand_name = self.ligand_names[idx]
@@ -397,7 +397,7 @@ class VSTestGraphDataset_Fly_SMI(VSTestGraphDataset_Fly):
         try:
             data = self.merge_complex_graph(idx)
             data['ligand'].pos -= data['ligand'].pos.mean(dim=0) - self.pocket_center
-            data['ligand'].pos = random_rotation(shuffle_center(data['ligand'].pos))
+            # data['ligand'].pos = random_rotation(shuffle_center(data['ligand'].pos)) # fixme: dont do random rotation and shift
         except:
             return None
         return data
