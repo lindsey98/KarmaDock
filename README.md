@@ -76,7 +76,8 @@ unzip -q pdbbind2020_core_set.zip?download=1
 
 ### 2. Preprocess PDBBind data
 
-The purpose of this step is to identify residues that are within a 12Å radius of any ligand atom and use them as the pocket of the protein. The pocket file (xxx_pocket_ligH12A.pdb) will also be saved on the `complex_file_dir`.
+The purpose of this step is to identify residues that are within a 12Å radius of any ligand atom and use them as the pocket of the protein. 
+The pocket file (xxx_pocket_ligH12A.pdb) will also be saved on the `complex_file_dir`.
 
 ```
 cd /root/KarmaDock/utils 
@@ -112,22 +113,29 @@ python -u generate_graph.py --complex_file_dir /root/KarmaDock/pdbbind2020_core_
 
 This step will perform ligand docking (predict binding poses and binding strengthes) based on the graphs. (finished in about 0.5 min)
 
-```
+```commandline
 cd /root/KarmaDock/utils 
-python -u ligand_docking.py 
---graph_file_dir ~/the/directory/for/saving/graph 
---model_file ~/path/of/trained/model/parameters 
---out_dir ~/path/for/recording/BindingPoses&DockingScores 
---docking Ture/False  whether generating binding poses
---scoring Ture/False  whether predict binding affinities
---correct Ture/False  whether correct the predicted binding poses
---batch_size 64 
---random_seed 2023 
+python -u ligand_docking.py \
+--graph_file_dir ~/the/directory/for/saving/graph \
+--model_file ~/path/of/trained/model/parameters \
+--out_dir ~/path/for/recording/BindingPoses&DockingScores \
+--docking Ture/False  # whether generating binding poses \
+--scoring Ture/False  # whether predict binding affinities \
+--correct Ture/False  # whether correct the predicted binding poses \
+--batch_size 64 \
+--random_seed 2023 \
 ```
 e.g.,
-```
+```commandline
 cd /root/KarmaDock/utils 
-python -u ligand_docking.py --graph_file_dir /root/KarmaDock/pdbbind_graph --model_file /root/KarmaDock/trained_models/karmadock_screening.pkl --out_dir /root/KarmaDock/pdbbind_result --docking True --scoring True --correct True --batch_size 64 --random_seed 2023
+python -u ligand_docking.py --graph_file_dir /root/KarmaDock/pdbbind_graph \
+--model_file /root/KarmaDock/trained_models/karmadock_screening.pkl \
+--out_dir /root/KarmaDock/pdbbind_result \
+--docking True \
+--scoring True \
+--correct True \
+--batch_size 64 \
+--random_seed 2023 
 ```
 
 ## Demo2 & virtual screening on DEKOIS 2.0
