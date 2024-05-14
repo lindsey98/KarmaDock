@@ -240,7 +240,7 @@ def correct_one(mol, pos_pred, method='ff'):
     if method == 'ff':
         raw_mol = set_rdkit_mol_position(raw_mol, pos_pred)
         try:
-            AllChem.MMFFOptimizeMolecule(raw_mol, maxIters=10)
+            AllChem.MMFFOptimizeMolecule(raw_mol, maxIters=200)
         except:
             print('FF optimization failed')
     else:
@@ -251,6 +251,28 @@ def correct_one(mol, pos_pred, method='ff'):
         # postion align
         # position_align_mol(rdkit_mol=mol, refer_mol=pred_mol)
         position_align_np(rdkit_mol=raw_mol, refer_mol=pred_mol)
+    return raw_mol, pred_mol
+
+def correct_one_both_postprocessing(mol, pos_pred):
+    # Clone the original molecule to preserve it
+    raw_mol = copy.deepcopy(mol)
+    pred_mol = copy.deepcopy(mol)
+
+    # Set positions to the predicted conformation
+    pred_mol = set_rdkit_mol_position(pred_mol, pos_pred)
+    raw_mol = set_rdkit_mol_position(raw_mol, pos_pred)
+
+    # first to torsion alignment
+    rotable_bonds = get_torsions([pred_mol])
+    raw_mol = torsional_align(rdkit_mol=raw_mol, pred_conf=pred_mol.GetConformer(), rotable_bonds=rotable_bonds)
+    position_align_np(rdkit_mol=raw_mol, refer_mol=pred_mol)
+
+    # After torsional alignment, perform force field optimization
+    try:
+        AllChem.MMFFOptimizeMolecule(raw_mol, maxIters=200)
+    except Exception as e:
+        print(f'FF optimization failed: {str(e)}')
+
     return raw_mol, pred_mol
 
 def ff_complex_minization(pocket_mol, ligand_mol, n_iters=200, ff_type='mmff'):
